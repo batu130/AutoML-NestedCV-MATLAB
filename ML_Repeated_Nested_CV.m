@@ -18,8 +18,12 @@ else
 end
 y = double(y);               
 
+validIdx = ~isnan(y);
+Xraw = Xraw(validIdx, :);
+y = y(validIdx);
+
 uClass = unique(y); 
-numC = numel(uClass); 
+numC = numel(uClass);
 isMultiClass = numC > 2;
 
 if nargin < 5 || isempty(selectedModels)
@@ -340,17 +344,21 @@ function Xp = applyPreprocessRules(X, prep)
 end
 
 function scoreAligned = alignScoreMatrix(score, mdl, uClass)
-    scoreAligned = score;
+    numSamples = size(score, 1);
+    numC = numel(uClass);
+    scoreAligned = zeros(numSamples, numC); 
+    
     try
         cls = mdl.ClassNames;
         [tf, loc] = ismember(uClass, cls);
-        if all(tf) && size(score, 2) >= max(loc)
-            scoreAligned = score(:, loc);
+        for i = 1:numC
+            if tf(i) && loc(i) > 0 && loc(i) <= size(score, 2)
+                scoreAligned(:, i) = score(:, loc(i));
+            end
         end
     catch
-        if size(score, 2) ~= numel(uClass)
-            scoreAligned = score(:, 1:numel(uClass));
-        end
+        cLen = min(size(score, 2), numC);
+        scoreAligned(:, 1:cLen) = score(:, 1:cLen);
     end
     
     if max(scoreAligned(:)) > 1.01 || min(scoreAligned(:)) < -0.01
